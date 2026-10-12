@@ -55,6 +55,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.R
 import com.example.data.model.Participant
 import com.example.ui.theme.PksOrangeDark
+import com.example.ui.theme.PksOrangeLight
 import com.example.ui.theme.PksOrangePrimary
 import com.example.util.QrCodeUtil
 
@@ -64,9 +65,9 @@ fun KokardeDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val qrBitmap = remember(participant.id) {
-        val qrContent = "PKS-MAGANG-${participant.id}"
-        QrCodeUtil.generateQrBitmap(qrContent, 400, 400)
+    val qrBitmap = remember(participant.id, participant.nim) {
+        val studentNim = participant.nim.ifBlank { participant.id }
+        QrCodeUtil.generateQrBitmap(studentNim, 400, 400)
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -175,17 +176,18 @@ fun KokardeDialog(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        text = "KOMDIGI DPW PKS SUMBAR",
+                                        text = "MAGANG",
                                         fontWeight = FontWeight.Black,
-                                        fontSize = 10.sp,
+                                        fontSize = 17.sp,
                                         color = Color.White,
-                                        letterSpacing = 0.3.sp
+                                        letterSpacing = 1.sp
                                     )
                                     Text(
-                                        text = "KARTU TANDA PESERTA MAGANG",
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 7.5.sp,
-                                        color = Color(0xFFFFEDD5)
+                                        text = "KARTU TANDA PESERTA",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 8.5.sp,
+                                        color = Color(0xFFFFEDD5),
+                                        letterSpacing = 0.5.sp
                                     )
                                 }
                             }
@@ -232,6 +234,25 @@ fun KokardeDialog(
                                         textAlign = TextAlign.Center
                                     )
 
+                                    val nicknameVal = participant.nickname.ifBlank { participant.name.split(" ").firstOrNull() ?: "" }
+                                    if (nicknameVal.isNotBlank()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .padding(top = 2.dp, bottom = 2.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(PksOrangeLight)
+                                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "\"$nicknameVal\"",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.5.sp,
+                                                color = PksOrangePrimary,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+
                                     val nimVal = participant.nim.ifBlank { participant.id }
                                     Text(
                                         text = "NIM: $nimVal",
@@ -242,11 +263,11 @@ fun KokardeDialog(
                                     )
 
                                     Text(
-                                        text = "MAGANG DI KOMDIGI",
+                                        text = "PESERTA MAGANG",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 8.5.sp,
+                                        fontSize = 9.sp,
                                         color = PksOrangePrimary,
-                                        letterSpacing = 0.5.sp
+                                        letterSpacing = 0.8.sp
                                     )
 
                                     Text(
@@ -265,31 +286,6 @@ fun KokardeDialog(
                                         textAlign = TextAlign.Center
                                     )
                                 }
-                            }
-
-                            // Card Footer with Participant ID Badge
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color.Black.copy(alpha = 0.35f))
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "ID PESERTA:",
-                                    fontSize = 9.sp,
-                                    color = Color(0xFFFFEDD5),
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = participant.id,
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Black
-                                )
                             }
                         }
                     }

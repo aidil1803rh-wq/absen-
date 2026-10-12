@@ -48,6 +48,7 @@ import com.example.ui.components.AppHeader
 import com.example.ui.dialogs.AddParticipantDialog
 import com.example.ui.dialogs.AlertModalDialog
 import com.example.ui.dialogs.DailyChecklistDialog
+import com.example.ui.dialogs.EditParticipantDialog
 import com.example.ui.dialogs.KokardeDialog
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.PesertaScreen
@@ -89,6 +90,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
     val selectedParticipantForKokarde by viewModel.selectedParticipantForKokarde.collectAsState()
     val selectedParticipantForChecklist by viewModel.selectedParticipantForChecklist.collectAsState()
     val isAddParticipantDialogOpen by viewModel.isAddParticipantDialogOpen.collectAsState()
+    val selectedParticipantForEdit by viewModel.selectedParticipantForEdit.collectAsState()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -224,6 +226,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         schedule = internshipSchedule,
                         onScanClick = { viewModel.switchTab(AppTab.SCAN) },
                         onViewRekapClick = { viewModel.switchTab(AppTab.REKAP) },
+                        onAddParticipantClick = { viewModel.openAddParticipantDialog() },
                         onParticipantClick = { item -> viewModel.openChecklistDialog(item) }
                     )
                 }
@@ -267,6 +270,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                     PesertaScreen(
                         participantsWithStats = todayParticipants,
                         onAddParticipantClick = { viewModel.openAddParticipantDialog() },
+                        onEditParticipant = { p -> viewModel.openEditParticipant(p) },
                         onOpenKokarde = { p -> viewModel.openKokarde(p) },
                         onDeleteParticipant = { id -> viewModel.deleteParticipant(id) }
                     )
@@ -288,8 +292,34 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         },
                         onExportCsv = { date ->
                             scope.launch {
-                                val csv = viewModel.repository.exportCsv(date)
-                                QrCodeUtil.shareCsv(context, csv, "Rekap_Absensi_$date")
+                                val schedule = viewModel.repository.getInternshipSchedule()
+                                val participants = viewModel.repository.participantDao.getAllParticipantsSnapshot()
+                                val records = viewModel.repository.attendanceDao.getAttendanceForDateSnapshot(date)
+                                QrCodeUtil.generateAndShareCsv(context, schedule, participants, records, date)
+                            }
+                        },
+                        onExportPdf = { date ->
+                            scope.launch {
+                                val schedule = viewModel.repository.getInternshipSchedule()
+                                val participants = viewModel.repository.participantDao.getAllParticipantsSnapshot()
+                                val records = viewModel.repository.attendanceDao.getAttendanceForDateSnapshot(date)
+                                QrCodeUtil.generateAndSharePdf(context, schedule, participants, records, date)
+                            }
+                        },
+                        onExportAllCsv = {
+                            scope.launch {
+                                val schedule = viewModel.repository.getInternshipSchedule()
+                                val participants = viewModel.repository.participantDao.getAllParticipantsSnapshot()
+                                val records = viewModel.repository.attendanceDao.getAllAttendanceSnapshot()
+                                QrCodeUtil.generateAndShareCsv(context, schedule, participants, records, null)
+                            }
+                        },
+                        onExportAllPdf = {
+                            scope.launch {
+                                val schedule = viewModel.repository.getInternshipSchedule()
+                                val participants = viewModel.repository.participantDao.getAllParticipantsSnapshot()
+                                val records = viewModel.repository.attendanceDao.getAllAttendanceSnapshot()
+                                QrCodeUtil.generateAndSharePdf(context, schedule, participants, records, null)
                             }
                         }
                     )
@@ -319,8 +349,18 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
             if (isAddParticipantDialogOpen) {
                 AddParticipantDialog(
                     onDismiss = { viewModel.closeAddParticipantDialog() },
-                    onSave = { name, nim, div, uni ->
-                        viewModel.addParticipant(name, nim, div, uni)
+                    onSave = { name, nim, div, uni, nick ->
+                        viewModel.addParticipant(name, nim, div, uni, nick)
+                    }
+                )
+            }
+
+            selectedParticipantForEdit?.let { p ->
+                EditParticipantDialog(
+                    participant = p,
+                    onDismiss = { viewModel.closeEditParticipant() },
+                    onSave = { id, name, nim, div, uni, nick ->
+                        viewModel.updateParticipant(id, name, nim, div, uni, nick)
                     }
                 )
             }

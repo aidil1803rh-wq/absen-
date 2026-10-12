@@ -13,7 +13,7 @@ import com.example.data.model.SettingItem
 
 @Database(
     entities = [Participant::class, AttendanceRecord::class, SettingItem::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

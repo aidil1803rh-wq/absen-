@@ -98,6 +98,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAddParticipantDialogOpen = MutableStateFlow(false)
     val isAddParticipantDialogOpen: StateFlow<Boolean> = _isAddParticipantDialogOpen.asStateFlow()
 
+    private val _selectedParticipantForEdit = MutableStateFlow<Participant?>(null)
+    val selectedParticipantForEdit: StateFlow<Participant?> = _selectedParticipantForEdit.asStateFlow()
+
     init {
         viewModelScope.launch {
             _workDays.value = repository.getWorkDays()
@@ -144,6 +147,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun closeAddParticipantDialog() {
         _isAddParticipantDialogOpen.value = false
     }
+
+    fun openEditParticipant(participant: Participant) {
+        _selectedParticipantForEdit.value = participant
+    }
+
+    fun closeEditParticipant() {
+        _selectedParticipantForEdit.value = null
+    }
+
+    fun updateParticipant(id: String, name: String, nim: String, division: String, university: String, nickname: String = "") {
+        if (name.isBlank() || division.isBlank()) {
+            showAlert("Peringatan", "Nama dan Divisi wajib diisi!", AlertType.WARNING)
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val updated = repository.updateParticipant(id, name, nim, division, university, nickname)
+                closeEditParticipant()
+                showAlert("Berhasil", "Data peserta ${updated.name} berhasil diperbarui.", AlertType.SUCCESS)
+            } catch (e: Exception) {
+                showAlert("Gagal", e.localizedMessage ?: "Gagal memperbarui data peserta.", AlertType.ERROR)
+            }
+        }
+    }
+
 
     fun recordAttendance(
         participantId: String,
@@ -280,13 +308,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addParticipant(name: String, nim: String = "", division: String, university: String) {
+    fun addParticipant(name: String, nim: String = "", division: String, university: String, nickname: String = "") {
         if (name.isBlank() || division.isBlank() || university.isBlank()) {
             showAlert("Peringatan", "Nama, Divisi, dan Kampus wajib diisi!", AlertType.WARNING)
             return
         }
         viewModelScope.launch {
-            val created = repository.addParticipant(name, nim, division, university)
+            val created = repository.addParticipant(name, nim, division, university, nickname)
             closeAddParticipantDialog()
             val nimInfo = if (created.nim.isNotBlank()) " (NIM: ${created.nim})" else ""
             showAlert("Berhasil", "Peserta magang baru ${created.name}$nimInfo berhasil didaftarkan.", AlertType.SUCCESS)

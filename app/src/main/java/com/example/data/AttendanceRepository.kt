@@ -19,9 +19,9 @@ import org.json.JSONObject
 import java.util.Calendar
 
 class AttendanceRepository(
-    private val participantDao: ParticipantDao,
-    private val attendanceDao: AttendanceDao,
-    private val settingDao: SettingDao,
+    val participantDao: ParticipantDao,
+    val attendanceDao: AttendanceDao,
+    val settingDao: SettingDao,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
     companion object {
@@ -45,57 +45,73 @@ class AttendanceRepository(
                 id = "2312016106",
                 name = "Fernanda Saputra",
                 division = "Komdigi & IT",
-                university = "UNAND",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312016106"
+                nim = "2312016106",
+                nickname = "Nanda"
             ),
             Participant(
                 id = "2312010143",
                 name = "Yogi Pradinata",
                 division = "Multimedia & Kreatif",
-                university = "UNP",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312010143"
+                nim = "2312010143",
+                nickname = "Yogi"
             ),
             Participant(
                 id = "2312010080",
                 name = "Bintang Resapta. S.",
                 division = "Humas & Protokoler",
-                university = "UNAND",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312010080"
+                nim = "2312010080",
+                nickname = "Bintang"
             ),
             Participant(
                 id = "2312010101",
                 name = "Abdul Bahri",
                 division = "Komdigi & IT",
-                university = "UIN Imam Bonjol",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312010101"
+                nim = "2312010101",
+                nickname = "Abdul"
             ),
             Participant(
                 id = "2312010088",
                 name = "M. Astomo",
                 division = "Multimedia & Kreatif",
-                university = "UNP",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312010088"
+                nim = "2312010088",
+                nickname = "Astomo"
             ),
             Participant(
                 id = "2312010150",
                 name = "Feri Saputra",
                 division = "Publikasi & Desain",
-                university = "UNP",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312010150"
+                nim = "2312010150",
+                nickname = "Feri"
             ),
             Participant(
                 id = "2312010145",
                 name = "Ade Okta Firdaus",
                 division = "Logistik & Teknis",
-                university = "UNAND",
+                university = "UIN Imam Bonjol (KPI)",
                 status = "Aktif",
-                nim = "2312010145"
+                nim = "2312010145",
+                nickname = "Ade"
+            ),
+            Participant(
+                id = "2112010112",
+                name = "M.Hafifurrazak",
+                division = "Komdigi & IT",
+                university = "UIN Imam Bonjol (KPI)",
+                status = "Aktif",
+                nim = "2112010112",
+                nickname = "Razak"
             )
         )
     }
@@ -109,10 +125,23 @@ class AttendanceRepository(
 
     private suspend fun seedDefaultDataIfEmpty() {
         val existing = participantDao.getAllParticipantsSnapshot().associateBy { it.id }
-        // Ensure all 7 requested interns exist and their data is preserved
+        // Ensure all 8 requested interns exist and ensure university is UIN Imam Bonjol (KPI) and nickname is populated
         for (intern in DEFAULT_INTERNS) {
-            if (!existing.containsKey(intern.id)) {
+            val current = existing[intern.id]
+            if (current == null) {
                 participantDao.insertParticipant(intern)
+            } else {
+                val needsUniUpdate = !current.university.contains("UIN", ignoreCase = true) || !current.university.contains("KPI", ignoreCase = true)
+                val needsNickUpdate = current.nickname.isBlank() && intern.nickname.isNotBlank()
+                val needsNimUpdate = current.nim.isBlank() || current.nim != intern.nim
+                val needsNameUpdate = current.name != intern.name && current.id == intern.id
+                if (needsUniUpdate || needsNickUpdate || needsNimUpdate || needsNameUpdate) {
+                    val updatedUni = if (needsUniUpdate) "UIN Imam Bonjol (KPI)" else current.university
+                    val updatedNick = if (needsNickUpdate) intern.nickname else current.nickname
+                    val updatedNim = if (needsNimUpdate) intern.nim else current.nim
+                    val updatedName = if (needsNameUpdate) intern.name else current.name
+                    participantDao.updateParticipant(current.copy(university = updatedUni, nickname = updatedNick, nim = updatedNim, name = updatedName))
+                }
             }
         }
 
@@ -328,14 +357,17 @@ class AttendanceRepository(
         dailyActivities: List<String>? = null,
         activityNotes: String? = null
     ): Result<Participant> {
-        val participant = participantDao.getParticipantById(participantId)
-            ?: return Result.failure(Exception("ID Peserta '$participantId' tidak ditemukan."))
+        val cleanQuery = participantId.trim().removePrefix("PKS-MAGANG-").trim()
+        val participant = participantDao.getParticipantByIdOrNim(cleanQuery)
+            ?: return Result.failure(Exception("NIM/ID Peserta '$cleanQuery' tidak ditemukan."))
 
-        val existing = attendanceDao.getRecord(participantId, dateStr)
+        val actualId = participant.id
+        val existing = attendanceDao.getRecord(actualId, dateStr)
         val activitiesString = dailyActivities?.joinToString(";") ?: existing?.dailyActivities ?: ""
 
         val record = if (existing != null) {
             existing.copy(
+                participantId = actualId,
                 status = status,
                 time = if (status == "Hadir") (if (existing.time != "-") existing.time else timeStr) else "-",
                 timeOut = timeOutStr ?: existing.timeOut,
@@ -347,7 +379,7 @@ class AttendanceRepository(
             )
         } else {
             AttendanceRecord(
-                participantId = participantId,
+                participantId = actualId,
                 date = dateStr,
                 status = status,
                 time = timeStr,
@@ -367,18 +399,21 @@ class AttendanceRepository(
         dateStr: String = QrCodeUtil.getTodayDateString(),
         timeOutStr: String = QrCodeUtil.getCurrentTimeString()
     ): Result<Participant> {
-        val participant = participantDao.getParticipantById(participantId)
-            ?: return Result.failure(Exception("ID Peserta '$participantId' tidak ditemukan."))
+        val cleanQuery = participantId.trim().removePrefix("PKS-MAGANG-").trim()
+        val participant = participantDao.getParticipantByIdOrNim(cleanQuery)
+            ?: return Result.failure(Exception("NIM/ID Peserta '$cleanQuery' tidak ditemukan."))
 
-        val existing = attendanceDao.getRecord(participantId, dateStr)
+        val actualId = participant.id
+        val existing = attendanceDao.getRecord(actualId, dateStr)
         val record = if (existing != null) {
             existing.copy(
+                participantId = actualId,
                 timeOut = timeOutStr,
                 timestamp = System.currentTimeMillis()
             )
         } else {
             AttendanceRecord(
-                participantId = participantId,
+                participantId = actualId,
                 date = dateStr,
                 status = "Hadir",
                 time = "-",
@@ -397,10 +432,12 @@ class AttendanceRepository(
         activities: List<String>,
         activityNotes: String
     ): Result<Participant> {
-        val participant = participantDao.getParticipantById(participantId)
-            ?: return Result.failure(Exception("ID Peserta '$participantId' tidak ditemukan."))
+        val cleanQuery = participantId.trim().removePrefix("PKS-MAGANG-").trim()
+        val participant = participantDao.getParticipantByIdOrNim(cleanQuery)
+            ?: return Result.failure(Exception("NIM/ID Peserta '$cleanQuery' tidak ditemukan."))
 
-        val existing = attendanceDao.getRecord(participantId, dateStr)
+        val actualId = participant.id
+        val existing = attendanceDao.getRecord(actualId, dateStr)
         val record = if (existing != null) {
             existing.copy(
                 isQuranRead = isQuranRead,
@@ -429,27 +466,56 @@ class AttendanceRepository(
         name: String,
         nim: String = "",
         division: String = "Komdigi & IT",
-        university: String = "UNAND"
+        university: String = "UIN Imam Bonjol (KPI)",
+        nickname: String = ""
     ): Participant {
         val cleanNim = nim.trim()
-        val existing = participantDao.getAllParticipantsSnapshot()
-        val newId = if (cleanNim.isNotBlank()) {
+        val finalCode = if (cleanNim.isNotBlank()) {
             cleanNim
         } else {
-            val nextNum = (existing.mapNotNull { it.id.removePrefix("MG").toIntOrNull() }.maxOrNull() ?: 0) + 1
-            "MG" + nextNum.toString().padStart(3, '0')
+            val existing = participantDao.getAllParticipantsSnapshot()
+            val nextNum = (existing.mapNotNull { it.id.toLongOrNull() }.maxOrNull() ?: 2112010112L) + 1L
+            nextNum.toString()
+        }
+        val defaultNick = nickname.trim().ifBlank {
+            name.trim().split(" ").firstOrNull() ?: ""
         }
         val participant = Participant(
-            id = newId,
+            id = finalCode,
             name = name.trim(),
             division = division.trim(),
             university = university.trim(),
             status = "Aktif",
-            nim = if (cleanNim.isNotBlank()) cleanNim else newId
+            nim = finalCode,
+            nickname = defaultNick
         )
         participantDao.insertParticipant(participant)
         checkAndProcessAutoAlfa()
         return participant
+    }
+
+    suspend fun updateParticipant(
+        id: String,
+        name: String,
+        nim: String,
+        division: String,
+        university: String,
+        nickname: String = ""
+    ): Participant {
+        val existing = participantDao.getParticipantById(id) ?: throw IllegalArgumentException("Peserta tidak ditemukan")
+        val cleanNim = nim.trim().ifBlank { existing.nim }
+        val finalNick = nickname.trim().ifBlank {
+            existing.nickname.ifBlank { name.trim().split(" ").firstOrNull() ?: "" }
+        }
+        val updated = existing.copy(
+            name = name.trim(),
+            nim = cleanNim,
+            division = division.trim(),
+            university = university.trim(),
+            nickname = finalNick
+        )
+        participantDao.updateParticipant(updated)
+        return updated
     }
 
     suspend fun deleteParticipant(id: String) {
@@ -468,20 +534,32 @@ class AttendanceRepository(
         } else {
             attendanceDao.getAllAttendanceSnapshot()
         }
+        val schedule = getInternshipSchedule()
+        val dayNames = schedule.workDays.map { QrCodeUtil.getDayName(it) }.joinToString(", ")
 
         val sb = java.lang.StringBuilder()
-        sb.append("ID,NIM,Nama,Divisi,Universitas,Tanggal,Jam_Masuk,Jam_Keluar,Status,Membaca_AlQuran,Detail_Tilawah,Kegiatan_Hari_Ini,Catatan\n")
+        sb.append("# PENGATURAN PROGRAM MAGANG\n")
+        sb.append("Periode_Mulai,${schedule.startDate}\n")
+        sb.append("Periode_Selesai,${schedule.endDate}\n")
+        sb.append("Jam_Masuk,${schedule.timeIn}\n")
+        sb.append("Jam_Keluar,${schedule.timeOut}\n")
+        sb.append("Hari_Kerja_Aktif,\"$dayNames\"\n")
+        sb.append("Total_Peserta,${participants.size}\n")
+        sb.append("Filter_Tanggal,${dateStr ?: "Semua Tanggal (Rekap Lengkap)"}\n\n")
+        sb.append("# DATA KEHADIRAN MAHASISWA MAGANG\n")
+        sb.append("Tanggal,NIM,Nama,Panggilan,Divisi,Universitas,Jam_Masuk,Jam_Keluar,Status,Membaca_AlQuran,Detail_Tilawah,Kegiatan_Hari_Ini,Catatan\n")
         for (rec in records) {
             val p = participants[rec.participantId]
             val nimVal = p?.nim?.ifBlank { p.id } ?: rec.participantId
             val name = p?.name ?: "Unknown"
+            val nick = p?.nickname ?: ""
             val div = p?.division ?: "-"
             val uni = p?.university ?: "-"
             val quranStatus = if (rec.isQuranRead) "Sudah" else "Belum"
             val tilawahDetail = rec.quranSurahJuz.replace("\"", "'")
             val actDetail = rec.dailyActivities.replace(";", " | ").replace("\"", "'")
             val notes = rec.activityNotes.replace("\"", "'")
-            sb.append("${rec.participantId},\"$nimVal\",\"$name\",\"$div\",\"$uni\",${rec.date},${rec.time},${rec.timeOut},${rec.status},\"$quranStatus\",\"$tilawahDetail\",\"$actDetail\",\"$notes\"\n")
+            sb.append("${rec.date},\"$nimVal\",\"$name\",\"$nick\",\"$div\",\"$uni\",${rec.time},${rec.timeOut},${rec.status},\"$quranStatus\",\"$tilawahDetail\",\"$actDetail\",\"$notes\"\n")
         }
         return sb.toString()
     }
@@ -506,6 +584,7 @@ class AttendanceRepository(
             obj.put("id", p.id)
             obj.put("nim", p.nim)
             obj.put("name", p.name)
+            obj.put("nickname", p.nickname)
             obj.put("division", p.division)
             obj.put("university", p.university)
             obj.put("status", p.status)
@@ -555,15 +634,18 @@ class AttendanceRepository(
                 val obj = partArray.getJSONObject(i)
                 val idVal = obj.getString("id")
                 val nimVal = obj.optString("nim", idVal)
+                val nameVal = obj.getString("name")
+                val nickVal = obj.optString("nickname", nameVal.split(" ").firstOrNull() ?: "")
                 pList.add(
                     Participant(
                         id = idVal,
-                        name = obj.getString("name"),
+                        name = nameVal,
                         division = obj.getString("division"),
                         university = obj.getString("university"),
                         status = obj.optString("status", "Aktif"),
                         createdAt = obj.optLong("createdAt", System.currentTimeMillis()),
-                        nim = nimVal
+                        nim = nimVal,
+                        nickname = nickVal
                     )
                 )
             }

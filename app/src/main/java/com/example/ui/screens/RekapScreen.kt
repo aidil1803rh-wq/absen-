@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,8 +36,13 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +52,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.data.model.ParticipantWithAttendance
 import com.example.ui.components.StatusBadge
 import com.example.ui.components.YellowCardBadge
@@ -70,11 +78,15 @@ fun RekapScreen(
     onSelectDate: (String) -> Unit,
     onUpdateStatus: (participantId: String, status: String, date: String) -> Unit,
     onExportCsv: (date: String) -> Unit,
+    onExportPdf: ((date: String) -> Unit)? = null,
+    onExportAllCsv: (() -> Unit)? = null,
+    onExportAllPdf: (() -> Unit)? = null,
     onOpenChecklist: ((ParticipantWithAttendance) -> Unit)? = null,
     onClearAttendance: ((participantId: String, date: String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var showExportDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -99,7 +111,7 @@ fun RekapScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Rekap Kehadiran Magang",
                             fontWeight = FontWeight.Bold,
@@ -113,23 +125,38 @@ fun RekapScreen(
                         )
                     }
 
-                    Button(
-                        onClick = { onExportCsv(selectedDate) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 12.dp,
-                            vertical = 6.dp
-                        ),
-                        modifier = Modifier.testTag("btn_export_csv")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Export",
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Export CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(
+                            onClick = { showExportDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("btn_export_pdf")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "PDF",
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("PDF", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { showExportDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("btn_export_csv")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "CSV",
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
@@ -259,6 +286,97 @@ fun RekapScreen(
                 }
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
+                }
+            }
+        }
+    }
+
+    if (showExportDialog) {
+        Dialog(onDismissRequest = { showExportDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Ekspor Rekap & Pengaturan Magang",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 15.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                    Text(
+                        text = "Bagikan data absensi dan rincian pengaturan magang (jam kerja & hari aktif) ke perangkat lain:",
+                        fontSize = 11.5.sp,
+                        color = Color(0xFF64748B)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text("FORMAT DOKUMEN PDF (RESMI)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+
+                    OutlinedButton(
+                        onClick = {
+                            showExportDialog = false
+                            onExportPdf?.invoke(selectedDate) ?: onExportCsv(selectedDate)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📄 PDF: Tanggal Ini ($selectedDate)", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            showExportDialog = false
+                            onExportAllPdf?.invoke() ?: onExportCsv(selectedDate)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📄 PDF: Semua Riwayat Tanggal (Lengkap)", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("FORMAT TABEL CSV / EXCEL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF16A34A))
+
+                    OutlinedButton(
+                        onClick = {
+                            showExportDialog = false
+                            onExportCsv(selectedDate)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📊 CSV: Tanggal Ini ($selectedDate)", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            showExportDialog = false
+                            onExportAllCsv?.invoke() ?: onExportCsv(selectedDate)
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📊 CSV: Semua Riwayat Tanggal (Lengkap)", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    OutlinedButton(
+                        onClick = { showExportDialog = false },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Tutup", fontSize = 12.sp, color = Color(0xFF64748B))
+                    }
                 }
             }
         }

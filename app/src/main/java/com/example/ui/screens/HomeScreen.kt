@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
@@ -25,12 +26,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,6 +71,7 @@ fun HomeScreen(
     schedule: com.example.data.model.InternshipSchedule = com.example.data.model.InternshipSchedule(),
     onScanClick: () -> Unit,
     onViewRekapClick: () -> Unit,
+    onAddParticipantClick: (() -> Unit)? = null,
     onParticipantClick: ((ParticipantWithAttendance) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -174,36 +178,66 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Total Peserta: ${stats.totalParticipants} Orang",
+                                text = "Total: ${stats.totalParticipants} Peserta",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
 
-                            Button(
-                                onClick = onScanClick,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White,
-                                    contentColor = PksOrangePrimary
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                    horizontal = 12.dp,
-                                    vertical = 6.dp
-                                ),
-                                modifier = Modifier.testTag("btn_banner_scan")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.QrCodeScanner,
-                                    contentDescription = "Scan",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Scan Absen",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Black
-                                )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (onAddParticipantClick != null) {
+                                    Button(
+                                        onClick = onAddParticipantClick,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.White.copy(alpha = 0.25f),
+                                            contentColor = Color.White
+                                        ),
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                            horizontal = 10.dp,
+                                            vertical = 6.dp
+                                        ),
+                                        modifier = Modifier.testTag("btn_banner_add_participant")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Tambah",
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "Tambah",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Button(
+                                    onClick = onScanClick,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White,
+                                        contentColor = PksOrangePrimary
+                                    ),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                        horizontal = 12.dp,
+                                        vertical = 6.dp
+                                    ),
+                                    modifier = Modifier.testTag("btn_banner_scan")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.QrCodeScanner,
+                                        contentDescription = "Scan",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Scan",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
                             }
                         }
                     }

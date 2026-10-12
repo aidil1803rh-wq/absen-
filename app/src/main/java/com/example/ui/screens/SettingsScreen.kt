@@ -2,7 +2,9 @@ package com.example.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.widget.Toast
+import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -649,9 +651,9 @@ fun SettingsScreen(
                 HorizontalDivider(color = Color(0xFFF1F5F9))
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Backup JSON Share & Import
+                // Backup & Export for Manual Sharing
                 Text(
-                    text = "TRANSFER FILE CADANGAN (OFFLINE)",
+                    text = "EKSPOR LAPORAN & TRANSFER DATA (OFFLINE)",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF94A3B8),
@@ -660,6 +662,55 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Row 1: PDF and CSV with Internship Settings
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val schedule = repository.getInternshipSchedule()
+                                val participants = repository.participantDao.getAllParticipantsSnapshot()
+                                val records = repository.attendanceDao.getAllAttendanceSnapshot()
+                                QrCodeUtil.generateAndSharePdf(context, schedule, participants, records, null)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_settings_export_pdf")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Ekspor PDF", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val schedule = repository.getInternshipSchedule()
+                                val participants = repository.participantDao.getAllParticipantsSnapshot()
+                                val records = repository.attendanceDao.getAllAttendanceSnapshot()
+                                QrCodeUtil.generateAndShareCsv(context, schedule, participants, records, null)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_settings_export_csv")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Ekspor CSV", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Row 2: JSON Backup & Import for Database Migration
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -668,25 +719,40 @@ fun SettingsScreen(
                         onClick = {
                             scope.launch {
                                 val json = repository.exportFullJson()
-                                QrCodeUtil.shareCsv(context, json, "backup_pks_magang")
+                                val cachePath = File(context.cacheDir, "exports").apply { mkdirs() }
+                                val file = File(cachePath, "backup_pks_magang.json")
+                                file.writeText(json)
+                                val contentUri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, contentUri)
+                                    putExtra(Intent.EXTRA_SUBJECT, "Backup Database Magang")
+                                    putExtra(Intent.EXTRA_TEXT, "File Cadangan Data Magang (Format JSON)")
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Bagikan Cadangan JSON"))
                             }
                         },
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_settings_export_backup_json")
                     ) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ekspor Backup", fontSize = 11.sp)
+                        Text("Cadangkan JSON", fontSize = 11.sp)
                     }
 
                     OutlinedButton(
                         onClick = { showImportDialog = true },
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("btn_settings_import_backup_json")
                     ) {
                         Icon(imageVector = Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Impor Backup", fontSize = 11.sp)
+                        Text("Pulihkan JSON", fontSize = 11.sp)
                     }
                 }
             }

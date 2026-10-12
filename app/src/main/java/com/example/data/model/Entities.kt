@@ -12,7 +12,8 @@ data class Participant(
     val university: String,
     val status: String = "Aktif",
     val createdAt: Long = System.currentTimeMillis(),
-    val nim: String = id
+    val nim: String = id,
+    val nickname: String = ""
 )
 
 @Entity(

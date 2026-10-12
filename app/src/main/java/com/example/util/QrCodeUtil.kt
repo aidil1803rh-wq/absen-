@@ -17,10 +17,13 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.graphics.pdf.PdfDocument
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.R
+import com.example.data.model.AttendanceRecord
+import com.example.data.model.InternshipSchedule
 import com.example.data.model.Participant
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -132,14 +135,14 @@ object QrCodeUtil {
             e.printStackTrace()
         }
 
-        // Header Titles
+        // Header Titles - Enlarged MAGANG, removed KOMDIGI DPW text
         val headerTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = 28f
-            letterSpacing = 0.02f
+            textSize = 38f
+            letterSpacing = 0.04f
         }
-        canvas.drawText("KOMDIGI DPW PKS SUMBAR", 154f, 88f, headerTitlePaint)
+        canvas.drawText("MAGANG", 154f, 92f, headerTitlePaint)
 
         val headerSubPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#FFEDD5")
@@ -147,7 +150,7 @@ object QrCodeUtil {
             textSize = 19f
             letterSpacing = 0.03f
         }
-        canvas.drawText("KARTU TANDA PESERTA MAGANG", 154f, 124f, headerSubPaint)
+        canvas.drawText("KARTU TANDA PESERTA", 154f, 126f, headerSubPaint)
 
         // 3. Center White Box
         val centerCardRect = RectF(40f, 180f, width - 40f, 1140f)
@@ -172,8 +175,9 @@ object QrCodeUtil {
         }
         canvas.drawRoundRect(qrBoxRect, 20f, 20f, qrBoxBorderPaint)
 
-        // Generate & Draw QR Code
-        val qrBitmap = generateQrBitmap("PKS-MAGANG-${participant.id}", 390, 390)
+        // Generate & Draw QR Code using Student's NIM directly
+        val studentNim = participant.nim.ifBlank { participant.id }
+        val qrBitmap = generateQrBitmap(studentNim, 390, 390)
         canvas.drawBitmap(qrBitmap, 205f, 230f, antiAliasPaint)
 
         // Participant Name
@@ -181,48 +185,73 @@ object QrCodeUtil {
             color = Color.parseColor("#0F172A")
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
-            textSize = if (participant.name.length > 20) 28f else 34f
+            textSize = if (participant.name.length > 20) 27f else 32f
         }
-        canvas.drawText(participant.name, 400f, 688f, namePaint)
+        canvas.drawText(participant.name, 400f, 676f, namePaint)
 
-        // NIM below name
+        // Nickname Pill below name
+        val nicknameVal = participant.nickname.ifBlank { participant.name.split(" ").firstOrNull() ?: "" }
+        if (nicknameVal.isNotBlank()) {
+            val nickText = "\"$nicknameVal\""
+            val nickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#EA580C")
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textAlign = Paint.Align.CENTER
+                textSize = 21f
+            }
+            val textWidth = nickPaint.measureText(nickText)
+            val pillPaddingX = 22f
+            val pillLeft = 400f - (textWidth / 2f) - pillPaddingX
+            val pillRight = 400f + (textWidth / 2f) + pillPaddingX
+            val pillTop = 688f
+            val pillBottom = 720f
+
+            val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#FFEDD5")
+                style = Paint.Style.FILL
+            }
+            canvas.drawRoundRect(RectF(pillLeft, pillTop, pillRight, pillBottom), 16f, 16f, pillBgPaint)
+            canvas.drawText(nickText, 400f, 712f, nickPaint)
+        }
+
+        // NIM below nickname
         val nimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#334155")
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
-            textSize = 23f
+            textSize = 22f
             letterSpacing = 0.04f
         }
         val nimText = "NIM: " + (participant.nim.ifBlank { participant.id })
-        canvas.drawText(nimText, 400f, 724f, nimPaint)
+        canvas.drawText(nimText, 400f, 750f, nimPaint)
 
-        // Subtitle "MAGANG DI KOMDIGI"
+        // Subtitle "PESERTA MAGANG"
         val rolePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#EA580C")
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
-            textSize = 21f
+            textSize = 20f
             letterSpacing = 0.05f
         }
-        canvas.drawText("MAGANG DI KOMDIGI", 400f, 762f, rolePaint)
+        canvas.drawText("PESERTA MAGANG", 400f, 784f, rolePaint)
 
         // Division
         val divPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#334155")
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
-            textSize = if (participant.division.length > 26) 20f else 24f
+            textSize = if (participant.division.length > 26) 20f else 23f
         }
-        canvas.drawText(participant.division, 400f, 802f, divPaint)
+        canvas.drawText(participant.division, 400f, 818f, divPaint)
 
         // University
         val uniPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#64748B")
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
-            textSize = 21f
+            textSize = 20f
         }
-        canvas.drawText(participant.university, 400f, 840f, uniPaint)
+        canvas.drawText(participant.university, 400f, 850f, uniPaint)
 
         // Divider
         val dividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -247,7 +276,7 @@ object QrCodeUtil {
             textSize = 21f
             letterSpacing = 0.02f
         }
-        canvas.drawText("DPW PKS SUMATERA BARAT", 400f, 968f, officialInstPaint)
+        canvas.drawText("PROGRAM MAGANG RESMI", 400f, 968f, officialInstPaint)
 
         val scanInstructionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#64748B")
@@ -256,29 +285,6 @@ object QrCodeUtil {
             textSize = 18f
         }
         canvas.drawText("Pindai QR Code untuk Presensi Harian", 400f, 1024f, scanInstructionPaint)
-
-        // 4. Bottom ID Bar
-        val bottomBarRect = RectF(40f, 1162f, width - 40f, 1234f)
-        val bottomBarPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(125, 0, 0, 0)
-            style = Paint.Style.FILL
-        }
-        canvas.drawRoundRect(bottomBarRect, 20f, 20f, bottomBarPaint)
-
-        val idLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#FFEDD5")
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = 22f
-        }
-        canvas.drawText("ID PESERTA:", 68f, 1206f, idLabelPaint)
-
-        val idValuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            textAlign = Paint.Align.RIGHT
-            textSize = 26f
-        }
-        canvas.drawText(participant.id, width - 68f, 1206f, idValuePaint)
 
         return bitmap
     }
@@ -374,13 +380,14 @@ object QrCodeUtil {
      * Downloads and saves only the QR Code bitmap of the participant to device Gallery.
      */
     fun downloadQrCode(context: Context, participant: Participant): Boolean {
-        val qrBitmap = generateQrBitmap("PKS-MAGANG-${participant.id}", 600, 600)
-        val filename = "QR_Magang_${participant.id}"
+        val studentNim = participant.nim.ifBlank { participant.id }
+        val qrBitmap = generateQrBitmap(studentNim, 600, 600)
+        val filename = "QR_Magang_$studentNim"
         val success = saveBitmapToGallery(context, qrBitmap, filename)
         if (success) {
             Toast.makeText(
                 context,
-                "✓ QR Code ${participant.id} berhasil disimpan ke Galeri!",
+                "✓ QR Code NIM $studentNim berhasil disimpan ke Galeri!",
                 Toast.LENGTH_SHORT
             ).show()
         } else {
@@ -474,6 +481,17 @@ object QrCodeUtil {
         }
     }
 
+    fun getDayName(day: Int): String = when (day) {
+        1 -> "Senin"
+        2 -> "Selasa"
+        3 -> "Rabu"
+        4 -> "Kamis"
+        5 -> "Jumat"
+        6 -> "Sabtu"
+        7 -> "Minggu"
+        else -> "Hari $day"
+    }
+
     fun shareCsv(context: Context, csvContent: String, filename: String) {
         try {
             val cachePath = File(context.cacheDir, "exports").apply { mkdirs() }
@@ -489,13 +507,284 @@ object QrCodeUtil {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/csv"
                 putExtra(Intent.EXTRA_STREAM, contentUri)
-                putExtra(Intent.EXTRA_SUBJECT, "Rekap Absensi Magang Komdigi PKS Sumbar")
-                putExtra(Intent.EXTRA_TEXT, "Data Rekap Absensi Magang Komdigi DPW PKS Sumbar")
+                putExtra(Intent.EXTRA_SUBJECT, "Laporan Absensi Magang & Pengaturan")
+                putExtra(Intent.EXTRA_TEXT, "Data Rekap Absensi & Pengaturan Magang Mahasiswa")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "Bagikan Rekap Absensi"))
+            context.startActivity(Intent.createChooser(intent, "Bagikan Rekap Absensi (CSV)"))
         } catch (e: Exception) {
             e.printStackTrace()
+            Toast.makeText(context, "Gagal membagikan CSV: ${e.message}", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun sharePdf(context: Context, pdfFile: File, title: String) {
+        try {
+            val contentUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                pdfFile
+            )
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+                putExtra(Intent.EXTRA_SUBJECT, title)
+                putExtra(Intent.EXTRA_TEXT, "$title - Absensi & Pengaturan Magang")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Bagikan Laporan PDF"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Gagal membagikan PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun generateAndSharePdf(
+        context: Context,
+        internshipSchedule: InternshipSchedule,
+        participants: List<Participant>,
+        records: List<AttendanceRecord>,
+        dateFilter: String? = null
+    ) {
+        try {
+            val pdfDocument = PdfDocument()
+            val pageWidth = 595
+            val pageHeight = 842
+            var pageNumber = 1
+
+            val participantMap = participants.associateBy { it.id }
+            val dayNames = internshipSchedule.workDays.map { getDayName(it) }.joinToString(", ")
+            val exportTime = SimpleDateFormat("dd MMMM yyyy HH:mm", Locale("id", "ID")).format(Date())
+
+            val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#0F172A")
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textSize = 15f
+            }
+            val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#64748B")
+                textSize = 9.5f
+            }
+            val boldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#1E293B")
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textSize = 9f
+            }
+            val normalPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#334155")
+                textSize = 8.5f
+            }
+            val headerTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                textSize = 8.5f
+            }
+            val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#94A3B8")
+                textSize = 8f
+            }
+            val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#E2E8F0")
+                strokeWidth = 1f
+            }
+            val orangePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#F97316")
+                style = Paint.Style.FILL
+            }
+            val tableHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#0F172A")
+                style = Paint.Style.FILL
+            }
+            val boxBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#FFF7ED")
+                style = Paint.Style.FILL
+            }
+            val boxBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#FED7AA")
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f
+            }
+
+            var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+            var page = pdfDocument.startPage(pageInfo)
+            var canvas = page.canvas
+
+            fun drawHeader(isFirstPage: Boolean): Float {
+                canvas.drawRect(0f, 0f, pageWidth.toFloat(), 6f, orangePaint)
+                if (isFirstPage) {
+                    canvas.drawText("LAPORAN ABSENSI & PENGATURAN MAGANG", 36f, 34f, titlePaint)
+                    canvas.drawText("Universitas Islam Negeri (UIN) Imam Bonjol Padang • KPI", 36f, 48f, subPaint)
+                    canvas.drawText("Diekspor: $exportTime WIB", 36f, 60f, footerPaint)
+                    canvas.drawLine(36f, 68f, 559f, 68f, linePaint)
+
+                    val boxRect = RectF(36f, 76f, 559f, 142f)
+                    canvas.drawRoundRect(boxRect, 8f, 8f, boxBgPaint)
+                    canvas.drawRoundRect(boxRect, 8f, 8f, boxBorderPaint)
+
+                    val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = Color.parseColor("#C2410C")
+                        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                        textSize = 9f
+                    }
+                    canvas.drawText("PENGATURAN & JADWAL PROGRAM MAGANG", 48f, 92f, labelPaint)
+                    canvas.drawText("• Periode Magang : ${internshipSchedule.startDate} s/d ${internshipSchedule.endDate}", 48f, 107f, normalPaint)
+                    canvas.drawText("• Jam Operasional: ${internshipSchedule.timeIn} - ${internshipSchedule.timeOut} WIB", 48f, 121f, normalPaint)
+                    canvas.drawText("• Hari Kerja Aktif : $dayNames (${internshipSchedule.workDays.size} hari/minggu)", 48f, 134f, normalPaint)
+
+                    canvas.drawText("• Total Peserta: ${participants.size} orang", 310f, 107f, normalPaint)
+                    canvas.drawText("• Filter: ${dateFilter ?: "Semua Tanggal (Rekap Lengkap)"}", 310f, 121f, normalPaint)
+                    canvas.drawText("• Total Data Absen: ${records.size} catatan", 310f, 134f, normalPaint)
+
+                    return 154f
+                } else {
+                    canvas.drawText("LAPORAN ABSENSI MAGANG (Lanjutan)", 36f, 26f, boldPaint)
+                    canvas.drawLine(36f, 32f, 559f, 32f, linePaint)
+                    return 42f
+                }
+            }
+
+            fun drawTableHeader(startY: Float) {
+                val thRect = RectF(36f, startY, 559f, startY + 18f)
+                canvas.drawRect(thRect, tableHeaderPaint)
+
+                canvas.drawText("No", 42f, startY + 12f, headerTextPaint)
+                canvas.drawText("Tanggal", 62f, startY + 12f, headerTextPaint)
+                canvas.drawText("NIM (Kode)", 116f, startY + 12f, headerTextPaint)
+                canvas.drawText("Nama Peserta", 182f, startY + 12f, headerTextPaint)
+                canvas.drawText("Masuk/Keluar", 298f, startY + 12f, headerTextPaint)
+                canvas.drawText("Status", 366f, startY + 12f, headerTextPaint)
+                canvas.drawText("Al-Qur'an", 412f, startY + 12f, headerTextPaint)
+                canvas.drawText("Kegiatan / Logbook", 466f, startY + 12f, headerTextPaint)
+            }
+
+            var currentY = drawHeader(true)
+            drawTableHeader(currentY)
+            currentY += 24f
+
+            val rowAltPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.parseColor("#F8FAFC")
+                style = Paint.Style.FILL
+            }
+
+            val statusColors = mapOf(
+                "Hadir" to Color.parseColor("#15803D"),
+                "Izin" to Color.parseColor("#1D4ED8"),
+                "Sakit" to Color.parseColor("#B45309"),
+                "Alfa" to Color.parseColor("#B91C1C")
+            )
+
+            records.forEachIndexed { index, rec ->
+                if (currentY > 790f) {
+                    canvas.drawLine(36f, 810f, 559f, 810f, linePaint)
+                    canvas.drawText("Dokumen Laporan Resmi Absensi Magang • Halaman $pageNumber", 36f, 824f, footerPaint)
+                    pdfDocument.finishPage(page)
+
+                    pageNumber++
+                    pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
+                    page = pdfDocument.startPage(pageInfo)
+                    canvas = page.canvas
+
+                    currentY = drawHeader(false)
+                    drawTableHeader(currentY)
+                    currentY += 24f
+                }
+
+                if (index % 2 == 1) {
+                    canvas.drawRect(36f, currentY - 10f, 559f, currentY + 10f, rowAltPaint)
+                }
+
+                val p = participantMap[rec.participantId]
+                val nim = p?.nim?.ifBlank { p.id } ?: rec.participantId
+                val nick = if (p?.nickname.isNullOrBlank()) "" else " (${p?.nickname})"
+                val rawName = (p?.name ?: "Unknown") + nick
+                val nameDisplay = if (rawName.length > 20) rawName.take(19) + "…" else rawName
+                val timeDisplay = "${rec.time} / ${rec.timeOut}"
+                val quranText = if (rec.isQuranRead) "✓ ${rec.quranSurahJuz.take(7)}" else "Belum"
+                val actRaw = (rec.dailyActivities.ifBlank { rec.activityNotes }).replace(";", " | ")
+                val actDisplay = if (actRaw.length > 20) actRaw.take(19) + "…" else actRaw
+
+                canvas.drawText("${index + 1}", 42f, currentY, normalPaint)
+                canvas.drawText(rec.date, 62f, currentY, normalPaint)
+                canvas.drawText(nim, 116f, currentY, boldPaint)
+                canvas.drawText(nameDisplay, 182f, currentY, normalPaint)
+                canvas.drawText(timeDisplay, 298f, currentY, normalPaint)
+
+                val statusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = statusColors[rec.status] ?: Color.parseColor("#334155")
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                    textSize = 8.5f
+                }
+                canvas.drawText(rec.status, 366f, currentY, statusPaint)
+                canvas.drawText(quranText, 412f, currentY, normalPaint)
+                canvas.drawText(actDisplay, 466f, currentY, normalPaint)
+
+                currentY += 18f
+            }
+
+            canvas.drawLine(36f, 810f, 559f, 810f, linePaint)
+            canvas.drawText("Dokumen Laporan Resmi Absensi Magang • Halaman $pageNumber (Selesai)", 36f, 824f, footerPaint)
+            pdfDocument.finishPage(page)
+
+            val cachePath = File(context.cacheDir, "exports").apply { mkdirs() }
+            val filename = if (dateFilter != null) "Laporan_Absensi_Magang_$dateFilter" else "Laporan_Lengkap_Absensi_Magang"
+            val file = File(cachePath, "$filename.pdf")
+            val outputStream = FileOutputStream(file)
+            pdfDocument.writeTo(outputStream)
+            outputStream.flush()
+            outputStream.close()
+            pdfDocument.close()
+
+            sharePdf(context, file, filename)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, "Gagal membuat PDF: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun generateAndShareCsv(
+        context: Context,
+        internshipSchedule: InternshipSchedule,
+        participants: List<Participant>,
+        records: List<AttendanceRecord>,
+        dateFilter: String? = null
+    ) {
+        val participantMap = participants.associateBy { it.id }
+        val dayNames = internshipSchedule.workDays.map { getDayName(it) }.joinToString(", ")
+
+        val sb = StringBuilder()
+        sb.append("# =====================================================\n")
+        sb.append("# PENGATURAN PROGRAM MAGANG\n")
+        sb.append("# =====================================================\n")
+        sb.append("Periode_Mulai,${internshipSchedule.startDate}\n")
+        sb.append("Periode_Selesai,${internshipSchedule.endDate}\n")
+        sb.append("Jam_Masuk,${internshipSchedule.timeIn}\n")
+        sb.append("Jam_Keluar,${internshipSchedule.timeOut}\n")
+        sb.append("Hari_Kerja_Aktif,\"$dayNames\"\n")
+        sb.append("Total_Hari_Kerja_Mingguan,${internshipSchedule.workDays.size}\n")
+        sb.append("Total_Peserta,${participants.size}\n")
+        sb.append("Filter_Tanggal,${dateFilter ?: "Semua Tanggal (Rekap Lengkap)"}\n\n")
+
+        sb.append("# =====================================================\n")
+        sb.append("# DATA KEHADIRAN DAN LOGBOOK PESERTA MAGANG\n")
+        sb.append("# =====================================================\n")
+        sb.append("Tanggal,NIM,Nama_Lengkap,Nama_Panggilan,Divisi,Universitas,Jam_Masuk,Jam_Keluar,Status,Membaca_AlQuran,Detail_Tilawah,Kegiatan_Harian,Catatan\n")
+
+        for (rec in records) {
+            val p = participantMap[rec.participantId]
+            val nim = p?.nim?.ifBlank { p.id } ?: rec.participantId
+            val name = (p?.name ?: "Unknown").replace("\"", "'")
+            val nickname = (p?.nickname ?: "").replace("\"", "'")
+            val div = (p?.division ?: "-").replace("\"", "'")
+            val uni = (p?.university ?: "-").replace("\"", "'")
+            val quran = if (rec.isQuranRead) "Sudah" else "Belum"
+            val tilawah = rec.quranSurahJuz.replace("\"", "'")
+            val acts = rec.dailyActivities.replace(";", " | ").replace("\"", "'")
+            val notes = rec.activityNotes.replace("\"", "'")
+            sb.append("${rec.date},\"$nim\",\"$name\",\"$nickname\",\"$div\",\"$uni\",${rec.time},${rec.timeOut},${rec.status},\"$quran\",\"$tilawah\",\"$acts\",\"$notes\"\n")
+        }
+
+        val filename = if (dateFilter != null) "Rekap_Absensi_Magang_$dateFilter" else "Rekap_Lengkap_Absensi_Magang"
+        shareCsv(context, sb.toString(), filename)
     }
 }

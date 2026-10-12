@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -60,6 +61,7 @@ import com.example.util.QrCodeUtil
 fun PesertaScreen(
     participantsWithStats: List<ParticipantWithAttendance>,
     onAddParticipantClick: () -> Unit,
+    onEditParticipant: (Participant) -> Unit,
     onOpenKokarde: (Participant) -> Unit,
     onDeleteParticipant: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -173,7 +175,7 @@ fun PesertaScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Cari nama, divisi, atau kampus...", fontSize = 12.sp) },
+            placeholder = { Text("Cari nama, NIM, atau divisi...", fontSize = 12.sp) },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -223,6 +225,17 @@ fun PesertaScreen(
                         color = Color(0xFF94A3B8),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Button(
+                        onClick = onAddParticipantClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = PksOrangePrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("btn_add_participant_empty_state")
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Tambah Peserta Sekarang", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         } else {
@@ -233,6 +246,7 @@ fun PesertaScreen(
                 items(filteredList) { item ->
                     ParticipantRowCard(
                         item = item,
+                        onEditClick = { onEditParticipant(item.participant) },
                         onKokardeClick = { onOpenKokarde(item.participant) },
                         onDeleteClick = { participantToDelete = item.participant }
                     )
@@ -273,6 +287,7 @@ fun PesertaScreen(
 @Composable
 fun ParticipantRowCard(
     item: ParticipantWithAttendance,
+    onEditClick: () -> Unit,
     onKokardeClick: () -> Unit,
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -316,12 +331,31 @@ fun ParticipantRowCard(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.participant.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.5.sp,
-                    color = Color(0xFF0F172A)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.participant.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        color = Color(0xFF0F172A)
+                    )
+                    val nick = item.participant.nickname.ifBlank { item.participant.name.split(" ").firstOrNull() ?: "" }
+                    if (nick.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(PksOrangeLight)
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "\"$nick\"",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PksOrangePrimary
+                            )
+                        }
+                    }
+                }
 
                 val nimDisplay = item.participant.nim.ifBlank { item.participant.id }
                 Text(
@@ -363,9 +397,27 @@ fun ParticipantRowCard(
                 }
             }
 
-            // Buttons: Kokarde, Quick Download & Delete
+            // Buttons: Edit, Kokarde, Quick Download & Delete
             val rowContext = LocalContext.current
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF1F5F9))
+                        .testTag("btn_edit_${item.participant.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Peserta",
+                        tint = Color(0xFF334155),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
                 Button(
                     onClick = onKokardeClick,
                     colors = ButtonDefaults.buttonColors(

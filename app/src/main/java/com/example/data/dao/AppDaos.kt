@@ -21,6 +21,9 @@ interface ParticipantDao {
     @Query("SELECT * FROM participants WHERE id = :id LIMIT 1")
     suspend fun getParticipantById(id: String): Participant?
 
+    @Query("SELECT * FROM participants WHERE id = :idOrNim OR nim = :idOrNim LIMIT 1")
+    suspend fun getParticipantByIdOrNim(idOrNim: String): Participant?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertParticipant(participant: Participant)
 

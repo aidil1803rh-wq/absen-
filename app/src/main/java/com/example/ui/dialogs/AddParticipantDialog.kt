@@ -41,12 +41,13 @@ import com.example.ui.theme.PksOrangePrimary
 @Composable
 fun AddParticipantDialog(
     onDismiss: () -> Unit,
-    onSave: (name: String, nim: String, division: String, university: String) -> Unit
+    onSave: (name: String, nim: String, division: String, university: String, nickname: String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var nickname by remember { mutableStateOf("") }
     var nim by remember { mutableStateOf("") }
     var division by remember { mutableStateOf("") }
-    var university by remember { mutableStateOf("") }
+    var university by remember { mutableStateOf("UIN Imam Bonjol (KPI)") }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -101,7 +102,12 @@ fun AddParticipantDialog(
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = {
+                        name = it
+                        if (nickname.isBlank() && it.isNotBlank()) {
+                            // Don't auto override if typed, but helps provide hint
+                        }
+                    },
                     placeholder = { Text("Contoh: Fernanda Saputra", fontSize = 13.sp) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
@@ -113,7 +119,27 @@ fun AddParticipantDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "NIM (Nomor Induk Mahasiswa)",
+                    text = "Nama Panggilan (untuk Kokarde & Sapaan)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF475569)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = nickname,
+                    onValueChange = { nickname = it },
+                    placeholder = { Text("Contoh: Nanda / Juna", fontSize = 13.sp) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("input_participant_nickname")
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "NIM (Kode Unik Peserta Magang)",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF475569)
@@ -122,12 +148,18 @@ fun AddParticipantDialog(
                 OutlinedTextField(
                     value = nim,
                     onValueChange = { nim = it },
-                    placeholder = { Text("Contoh: 2312016106", fontSize = 13.sp) },
+                    placeholder = { Text("Contoh: 2112010112", fontSize = 13.sp) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("input_participant_nim")
+                )
+                Text(
+                    text = "*NIM otomatis menjadi kode peserta dan kode QR absensi",
+                    fontSize = 10.sp,
+                    color = Color(0xFF64748B),
+                    modifier = Modifier.padding(top = 2.dp, start = 4.dp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -153,7 +185,7 @@ fun AddParticipantDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Universitas / Kampus Asal",
+                    text = "Asal Kampus / Jurusan",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF475569)
@@ -162,7 +194,7 @@ fun AddParticipantDialog(
                 OutlinedTextField(
                     value = university,
                     onValueChange = { university = it },
-                    placeholder = { Text("Contoh: UNAND / UNP / UIN", fontSize = 13.sp) },
+                    placeholder = { Text("UIN Imam Bonjol (KPI)", fontSize = 13.sp) },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
@@ -187,7 +219,7 @@ fun AddParticipantDialog(
                     }
 
                     Button(
-                        onClick = { onSave(name, nim, division, university) },
+                        onClick = { onSave(name, nim, division, university, nickname) },
                         colors = ButtonDefaults.buttonColors(containerColor = PksOrangePrimary),
                         shape = RoundedCornerShape(12.dp),
                         enabled = name.isNotBlank() && division.isNotBlank() && university.isNotBlank(),
